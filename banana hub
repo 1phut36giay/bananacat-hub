@@ -1,0 +1,202 @@
+
+repeat task.wait() until game:IsLoaded()
+
+local player = game.Players.LocalPlayer
+local TweenService = game:GetService("TweenService")
+local camera = workspace.CurrentCamera
+
+local VALID_KEYS = {
+    ["Xygufs7tdshigfdxhjdg97rjv"] = true
+}
+
+local SAVE_FILE = "banana_key.txt"
+
+local function saveKey(k)
+    pcall(function()
+        if writefile then writefile(SAVE_FILE,k) end
+    end)
+end
+
+local function loadKey()
+    local k
+    pcall(function()
+        if isfile and readfile and isfile(SAVE_FILE) then
+            k = readfile(SAVE_FILE)
+        end
+    end)
+    return k
+end
+
+local function checkKey(k)
+    return VALID_KEYS[k] == true
+end
+
+local gui = Instance.new("ScreenGui", game.CoreGui)
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0,300,0,160)
+frame.Position = UDim2.new(0.5,-150,0.5,-80)
+frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+
+local box = Instance.new("TextBox", frame)
+box.Size = UDim2.new(0.8,0,0,40)
+box.Position = UDim2.new(0.1,0,0.3,0)
+box.PlaceholderText = "Enter Key..."
+
+local btn = Instance.new("TextButton", frame)
+btn.Size = UDim2.new(0.5,0,0,40)
+btn.Position = UDim2.new(0.25,0,0.7,0)
+btn.Text = "Submit"
+
+local saved = loadKey()
+if saved then box.Text = saved end
+
+local KEYWORDS = {
+    sea = {"sea","ship","beast"},
+    dragon = {"dragon"}
+}
+
+local function find(keywords)
+    local t = {}
+    for _,v in pairs(workspace:GetDescendants()) do
+        local n = v.Name:lower()
+        for _,k in pairs(keywords) do
+            if string.find(n,k) then
+                table.insert(t,v)
+                break
+            end
+        end
+    end
+    return t
+end
+
+local esp = {}
+
+local function clearESP()
+    for _,v in pairs(esp) do
+        if v then v:Destroy() end
+    end
+    esp = {}
+end
+
+local function createESP(obj)
+    if obj:FindFirstChild("ESP") then return end
+
+    local b = Instance.new("BillboardGui")
+    b.Name = "ESP"
+    b.Parent = obj
+    b.Size = UDim2.new(0,80,0,30)
+    b.AlwaysOnTop = true
+
+    local t = Instance.new("TextLabel", b)
+    t.Size = UDim2.new(1,0,1,0)
+    t.Text = obj.Name
+    t.TextColor3 = Color3.new(1,0,0)
+    t.BackgroundTransparency = 1
+
+    table.insert(esp, b)
+end
+
+local function loadHub()
+    gui:Destroy()
+
+    local hub = Instance.new("ScreenGui", game.CoreGui)
+
+    local blur = Instance.new("BlurEffect", game.Lighting)
+    blur.Size = 0
+    TweenService:Create(blur, TweenInfo.new(0.3), {Size = 15}):Play()
+
+    local main = Instance.new("Frame", hub)
+    main.Size = UDim2.new(0,0,0,0)
+    main.Position = UDim2.new(0.5,0,0.5,0)
+    main.AnchorPoint = Vector2.new(0.5,0.5)
+    main.BackgroundColor3 = Color3.fromRGB(20,20,20)
+
+    Instance.new("UICorner", main).CornerRadius = UDim.new(0,15)
+
+    TweenService:Create(main, TweenInfo.new(0.35, Enum.EasingStyle.Back), {
+        Size = UDim2.new(0,420,0,300)
+    }):Play()
+
+    local open = Instance.new("TextButton", hub)
+    open.Size = UDim2.new(0,60,0,60)
+    open.Position = UDim2.new(0,20,0.5,0)
+    open.Text = "🍌"
+    open.BackgroundColor3 = Color3.fromRGB(255,200,0)
+    Instance.new("UICorner",open).CornerRadius = UDim.new(1,0)
+
+    open.MouseButton1Click:Connect(function()
+        main.Visible = not main.Visible
+    end)
+
+    local radar = Instance.new("Frame", main)
+    radar.Size = UDim2.new(0,150,0,150)
+    radar.Position = UDim2.new(1,-160,1,-160)
+    radar.BackgroundColor3 = Color3.new(0,0,0)
+    Instance.new("UICorner", radar).CornerRadius = UDim.new(1,0)
+
+    local function updateRadar()
+        radar:ClearAllChildren()
+
+        local char = player.Character
+        if not char then return end
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+
+        local found = find(KEYWORDS.sea)
+
+        for _,obj in pairs(found) do
+            local pos = obj:IsA("Model") and obj:GetPivot().Position or obj.Position
+            local offset = pos - root.Position
+
+            if offset.Magnitude < 300 then
+                local rel = camera.CFrame:VectorToObjectSpace(offset)
+
+                local dot = Instance.new("Frame", radar)
+                dot.Size = UDim2.new(0,5,0,5)
+                dot.Position = UDim2.new(0.5 + rel.X/100,0,0.5 + rel.Z/100,0)
+                dot.BackgroundColor3 = Color3.new(1,0,0)
+
+                local txt = Instance.new("TextLabel", dot)
+                txt.Size = UDim2.new(0,50,0,15)
+                txt.Text = math.floor(offset.Magnitude).."m"
+                txt.TextColor3 = Color3.new(1,1,1)
+                txt.BackgroundTransparency = 1
+            end
+        end
+    end
+
+    task.spawn(function()
+        while true do
+            updateRadar()
+            task.wait(1)
+        end
+    end)
+
+    local scan = Instance.new("TextButton", main)
+    scan.Size = UDim2.new(0,200,0,40)
+    scan.Position = UDim2.new(0.5,-100,0.3,0)
+    scan.Text = "Scan + ESP"
+
+    scan.MouseButton1Click:Connect(function()
+        clearESP()
+        local f = find(KEYWORDS.sea)
+        for i,v in pairs(f) do
+            if i > 8 then break end
+            createESP(v)
+        end
+    end)
+end
+
+btn.MouseButton1Click:Connect(function()
+    if checkKey(box.Text) then
+        saveKey(box.Text)
+        loadHub()
+    else
+        btn.Text = "❌ Sai key"
+    end
+end)
+
+if saved and checkKey(saved) then
+    loadHub()
+end
